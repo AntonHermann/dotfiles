@@ -76,48 +76,11 @@
   url: "https://github.com/pypa/pipx/releases/download/{{ $pipxVersion }}/pipx.pyz"
   executable: true
 
-".local/bin/kubecolor":
-  type: archive-file
-  {{ $kubecolorVersion := includeTemplate "get-github-latest-version" (list "kubecolor/kubecolor" $cache) }}
-  url: "https://github.com/kubecolor/kubecolor/releases/download/v{{ $kubecolorVersion }}/kubecolor_{{ $kubecolorVersion }}_linux_{{ .chezmoi.arch }}.tar.gz"
-  path: kubecolor
-
-".local/bin/kubectx":
-  type: archive-file
-  {{ $kubectxVersion := includeTemplate "get-github-latest-version" (list "ahmetb/kubectx" $cache) }}
-  url: "https://github.com/ahmetb/kubectx/releases/download/v{{ $kubectxVersion }}/kubectx_v{{ $kubectxVersion }}_linux_{{ .uname_arch }}.tar.gz"
-  path: kubectx
-
-".oh-my-zsh/custom/plugins/my-completions/_kubectx.zsh":
-  type: file
-  url: "https://github.com/ahmetb/kubectx/raw/v{{ $kubectxVersion }}/completion/_kubectx.zsh"
-
-".local/bin/kubens":
-  type: archive-file
-  url: "https://github.com/ahmetb/kubectx/releases/download/v{{ $kubectxVersion }}/kubens_v{{ $kubectxVersion }}_linux_{{ .uname_arch }}.tar.gz"
-  path: kubens
-
-".oh-my-zsh/custom/plugins/my-completions/_kubens.zsh":
-  type: file
-  url: "https://github.com/ahmetb/kubectx/raw/v{{ $kubectxVersion }}/completion/_kubens.zsh"
-
-# Required by kubectx and kubens
 ".local/bin/fzf":
   type: archive-file
   {{ $fzfVersion := includeTemplate "get-github-latest-version" (list "junegunn/fzf" $cache) }}
   url: "https://github.com/junegunn/fzf/releases/download/v{{ $fzfVersion }}/fzf-{{ $fzfVersion }}-linux_{{ .chezmoi.arch }}.tar.gz"
   path: fzf
-
-".local/bin/stern":
-  type: archive-file
-  {{ $sternVersion := includeTemplate "get-github-latest-version" (list "stern/stern" $cache) }}
-  url: "https://github.com/stern/stern/releases/download/v{{ $sternVersion }}/stern_{{ $sternVersion }}_linux_{{ .chezmoi.arch }}.tar.gz"
-  path: stern
-
-".volta/bin":
-  type: archive
-  {{ $voltaVersion := includeTemplate "get-github-latest-version" (list "volta-cli/volta" $cache) }}
-  url: "https://github.com/volta-cli/volta/releases/download/v{{ $voltaVersion }}/volta-{{ $voltaVersion }}-linux.tar.gz"
 
 {{   if .is_gnome -}}
 ".local/share/nautilus-python/extensions/code-nautilus.py":
@@ -126,17 +89,18 @@
   url: "https://raw.githubusercontent.com/harry-cpp/code-nautilus/{{ $codeNautilusRevision }}/code-nautilus.py"
 {{-  end }}
 
-".local/bin/skopeo":
-  type: file
-  {{ $skopeoVersion := includeTemplate "get-github-latest-version" (list "felipecrs/skopeo-bin" $cache) }}
-  url: "https://github.com/felipecrs/skopeo-bin/releases/download/v{{ $skopeoVersion }}/skopeo.linux-{{ .chezmoi.arch }}"
-  executable: true
+### Manage JavaScript command-line tools
+# ".volta/bin":
+#   type: archive
+#   {{ $voltaVersion := includeTemplate "get-github-latest-version" (list "volta-cli/volta" $cache) }}
+#   url: "https://github.com/volta-cli/volta/releases/download/v{{ $voltaVersion }}/volta-{{ $voltaVersion }}-linux.tar.gz"
 
-".deno/bin/deno":
-  type: archive-file
-  {{ $denoVersion := includeTemplate "get-github-latest-version" (list "denoland/deno" $cache) }}
-  url: "https://github.com/denoland/deno/releases/download/v{{ $denoVersion }}/deno-{{ .uname_arch }}-unknown-linux-gnu.zip"
-  path: deno
+### JavaScript, TypeScript and WebAssembly runtime
+# ".deno/bin/deno":
+#   type: archive-file
+#   {{ $denoVersion := includeTemplate "get-github-latest-version" (list "denoland/deno" $cache) }}
+#   url: "https://github.com/denoland/deno/releases/download/v{{ $denoVersion }}/deno-{{ .uname_arch }}-unknown-linux-gnu.zip"
+#   path: deno
 
 "{{ joinPath .fontsDir .terminalFont.fileName }}":
   type: file

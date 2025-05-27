@@ -106,10 +106,10 @@ DISABLE_MAGIC_FUNCTIONS="true"
 plugins=(
   git
   web-search
-  docker
-  docker-compose
-  kubectl
-  helm
+  # docker
+  # docker-compose
+  # kubectl
+  # helm
   npm
   command-not-found
   common-aliases
