@@ -215,14 +215,16 @@ if [ -n "${target_dir}" ]; then
   exit 127
 fi
 
-if command -v nano >/dev/null; then
+if command -v kak >/dev/null; then
+  editor="kak"
+elif command -v nano >/dev/null; then
   editor="nano"
 elif command -v vim >/dev/null; then
   editor="vim"
 elif command -v vi >/dev/null; then
   editor="vi"
 else
-  echo "ERROR(dotfiles-code): neither code-insiders, nano, vim, or vi is available" >&2
+  echo "ERROR(dotfiles-code): neither code-insiders, kakoune, nano, vim, or vi is available" >&2
   exit 127
 fi
 
