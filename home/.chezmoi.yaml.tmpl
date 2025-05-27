@@ -1,5 +1,5 @@
-{{- $name := "Felipe Santos" -}}
-{{- $email := "felipecassiors@gmail.com" -}}
+{{- $name := "Anton" -}}
+{{- $email := "antonoehler@protonmail.com" -}}
 
 {{- $chezmoiForce := or (has "--force" .chezmoi.args) (has "--force=true" .chezmoi.args) -}}
 {{- $interactive := and stdinIsATTY (not $chezmoiForce) -}}
@@ -17,7 +17,7 @@
 {{- end -}}
 {{- if $interactive -}}
 {{-   range $i := until 99 -}}
-{{-     $question := "❔ What is your full name" -}}
+{{-     $question := "❔ What is your name (for usage in git)" -}}
 {{-     $answer := "" -}}
 {{-     if $name -}}
 {{-       $answer = promptString $question $name -}}
