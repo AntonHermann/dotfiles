@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+# {{ template "scripts-library" }}
+
+# The following line is for ShellCheck to correctly identify the above included library
+true || source ../.chezmoitemplates/scripts-library
+
+readonly wanted_packages=(
+  ca-certificates
+  dialog
+  build-essential
+  curl
+  zsh
+  wget
+  parallel
+  git
+  python3
+  # needed by pipx
+  python3-venv
+  # docker-ce
+  # docker-ce-cli
+  # containerd.io
+  # docker-compose-plugin
+  # docker-buildx-plugin
+  asciinema
+  # provides nslookup
+  dnsutils
+  # {{ if .is_gnome }}
+  gnome-tweaks
+  # google-chrome-stable
+  python3-nautilus
+  # {{ end }}
+  # {{ if .is_wsl }}
+  wslu
+  # {{ else }}
+  # {{   if eq .chezmoi.osRelease.versionCodename "jammy" }}
+  linux-generic-hwe-22.04
+  # {{   else if eq .chezmoi.osRelease.versionCodename "focal" }}
+  linux-generic-hwe-20.04
+  # {{   end }}
+  # {{ end }}
+)
+missing_packages=()
+
+for package in "${wanted_packages[@]}"; do
+  # shellcheck disable=SC2310
+  if ! is_apt_package_installed "${package}"; then
+    missing_packages+=("${package}")
+  fi
+done
+
+if [[ ${#missing_packages[@]} -gt 0 ]]; then
+  log_task "Installing missing packages with APT: ${missing_packages[*]}"
+
+  c sudo apt update
+
+  extra_args=()
+  if [[ "${DOTFILES_TEST:-}" == true ]]; then
+    log_manual_action "Not installing recommended packages to speed up test mode"
+    extra_args+=("--no-install-recommends")
+  else
+    extra_args+=("--install-recommends")
+  fi
+
+  c sudo env DEBIAN_FRONTEND=noninteractive apt install --yes "${extra_args[@]}" "${missing_packages[@]}"
+fi
