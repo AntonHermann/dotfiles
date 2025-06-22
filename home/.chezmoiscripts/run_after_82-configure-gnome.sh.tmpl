@@ -32,17 +32,11 @@ xdg-mime default code.desktop text/plain
 gsettings_ensure org.gnome.desktop.interface monospace-font-name 'FiraCode Nerd Font Mono 13'
 
 # Configuring up Yaru-dark theme
-gsettings_ensure org.gnome.desktop.interface gtk-theme "Yaru-dark"
-gsettings_ensure org.gnome.desktop.interface icon-theme "Yaru"
+gsettings_ensure org.gnome.desktop.interface gtk-theme "Yaru-purple-dark"
+gsettings_ensure org.gnome.desktop.interface icon-theme "Yaru-purple-dark"
 gsettings_ensure org.gnome.desktop.interface cursor-theme "Yaru"
 gsettings_ensure org.gnome.desktop.sound theme-name "Yaru"
-# {{ if ge .chezmoi.osRelease.versionID "22.04" }}
 gsettings_ensure org.gnome.desktop.interface color-scheme "prefer-dark"
-# {{ else }}
-# {{   if not .is_wsl }}
-gsettings_ensure org.gnome.shell.extensions.user-theme name "Yaru-dark" user-theme@gnome-shell-extensions.gcampax.github.com
-# {{   end }}
-# {{ end }}
 
 # Configuring miscellaneous settings
 gsettings_ensure org.gtk.Settings.FileChooser show-hidden true
