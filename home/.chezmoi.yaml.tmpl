@@ -1,5 +1,5 @@
 {{- $name := "Anton" -}}
-{{- $email := "antonoehler@protonmail.com" -}}
+{{- $email := "anton.oehler@fu-berlin.de" -}}
 
 {{- $chezmoiForce := or (has "--force" .chezmoi.args) (has "--force=true" .chezmoi.args) -}}
 {{- $interactive := and stdinIsATTY (not $chezmoiForce) -}}
@@ -88,9 +88,9 @@ verbose: true
 # https://github.com/twpayne/chezmoi/issues/3257
 pager: ""
 
-# diff:
-#   exclude:
-#     - scripts
+diff:
+  exclude:
+    - scripts
 # status:
 #   exclude:
 #     - always
