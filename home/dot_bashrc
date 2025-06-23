@@ -29,8 +29,9 @@ HISTCONTROL=ignoreboth
 shopt -s histappend
 
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=1000
-HISTFILESIZE=10000
+# Unlimited history (https://superuser.com/a/452068)
+HISTSIZE=
+HISTFILESIZE=
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
@@ -129,3 +130,35 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/anton/repos/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)"
+if [[ $? -eq 0 ]]; then
+  eval "${__conda_setup}"
+else
+  if [[ -f "/home/anton/repos/miniconda3/etc/profile.d/conda.sh" ]]; then
+    . "/home/anton/repos/miniconda3/etc/profile.d/conda.sh"
+  else
+    export PATH="/home/anton/repos/miniconda3/bin:${PATH}"
+  fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+# ROS2 and Autominy environment setup
+source /opt/ros/jazzy/setup.bash
+source /home/anton/autominy/catkin_ws/install/setup.bash
+
+# uv and uvx completions
+eval "$(uv generate-shell-completion bash)"
+eval "$(uvx --generate-shell-completion bash)"
+
+# Xan completions
+function __xan {
+  xan compgen "$1" "$2" "$3"
+}
+complete -C __xan -o default xan
+
+# zoxide
+eval "$(zoxide init bash)"
