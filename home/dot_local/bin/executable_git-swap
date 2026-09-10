@@ -1,0 +1,222 @@
+#!/bin/sh
+# git-swap -- vertauscht die staged und die unstaged Aenderungen.
+#
+# Der Arbeitsbaum bleibt dabei unangetastet: mit H = HEAD-Tree, I = Index und
+# W = Arbeitsbaum ist staged = H->I und unstaged = I->W, also W = H + staged +
+# unstaged. Nach dem Tausch soll I' = H + (I->W) sein, und der Arbeitsbaum
+# waere dann I' + (H->I) = W -- unveraendert. Es verschiebt sich einzig die
+# Trennlinie, die der Index zieht.  I' ist ein Drei-Wege-Merge mit
+# base = I, ours = H, theirs = W.
+set -eu
+
+PROG=git-swap
+KEEP_BACKUPS=10
+
+die() {
+	printf '%s: %s\n' "$PROG" "$*" >&2
+	exit 1
+}
+
+usage() {
+	cat <<'USAGE'
+git swap -- vertauscht staged und unstaged Aenderungen
+
+	git swap [-n|--dry-run] [-p|--partial] [-h|--help]
+
+Was gestaged war, ist danach unstaged und umgekehrt.  Der Arbeitsbaum wird
+dabei nicht angefasst -- neu geschrieben wird ausschliesslich der Index.
+
+	-n, --dry-run   nur zeigen, was passieren wuerde
+	-p, --partial   bei Konflikten die konfliktfreien Pfade trotzdem tauschen
+	-h, --help      diese Hilfe -- als Subkommando aufgerufen faengt git das
+	                lange --help ab und sucht eine Manpage, dort also -h
+
+Ueberlappen sich staged und unstaged Aenderungen an denselben Stellen, ist der
+Tausch nicht eindeutig.  Standardmaessig wird dann gar nichts veraendert und
+mit Status 1 abgebrochen; --partial tauscht die uebrigen Pfade.
+
+Vor der Aenderung wird ein Snapshot von Index und Arbeitsbaum unter
+refs/git-swap/backup-<zeit> abgelegt (die letzten 10 bleiben erhalten).
+Rueckgaengig: git stash apply --index <snapshot>
+
+Bekannte Grenzen: untracked Dateien bleiben unberuehrt (gewollt).  Repositories
+mit sparse-checkout, skip-worktree oder assume-unchanged werden nicht
+gesondert behandelt.
+USAGE
+}
+
+dry_run=0
+partial=0
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	-n | --dry-run) dry_run=1 ;;
+	-p | --partial) partial=1 ;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	--)
+		shift
+		break
+		;;
+	-*) die "unbekannte Option: $1 (siehe --help)" ;;
+	*) break ;;
+	esac
+	shift
+done
+[ $# -eq 0 ] || die "nimmt keine Pfad-Argumente -- getauscht wird immer alles"
+
+# --- Vorbedingungen (alle read-only) ------------------------------------
+
+git rev-parse --git-dir >/dev/null 2>&1 || die "kein Git-Repository"
+[ "$(git rev-parse --is-inside-work-tree 2>/dev/null || echo false)" = true ] ||
+	die "kein Arbeitsbaum (bare Repository?)"
+git rev-parse --verify -q HEAD >/dev/null ||
+	die "HEAD zeigt auf keinen Commit -- es gibt noch nichts zu tauschen"
+[ -z "$(git ls-files --unmerged)" ] ||
+	die "der Index enthaelt ungeloeste Merge-Konflikte"
+
+for state in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG rebase-merge rebase-apply; do
+	if [ -e "$(git rev-parse --git-path "$state")" ]; then
+		die "eine Operation laeuft noch ($state) -- erst abschliessen oder abbrechen"
+	fi
+done
+
+cd "$(git rev-parse --show-toplevel)"
+
+# git stash create und git commit-tree brauchen eine Identitaet; nur falls
+# keine konfiguriert ist, eine Ersatzidentitaet fuer die Wegwerf-Objekte.
+if ! git var GIT_COMMITTER_IDENT >/dev/null 2>&1; then
+	GIT_AUTHOR_NAME=git-swap
+	GIT_AUTHOR_EMAIL=git-swap@invalid
+	GIT_COMMITTER_NAME=git-swap
+	GIT_COMMITTER_EMAIL=git-swap@invalid
+	export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+fi
+
+# --- Snapshot: liefert alle drei Baeume, ohne irgendetwas zu veraendern ---
+
+snapshot=$(git stash create) || die "git stash create ist fehlgeschlagen"
+if [ -z "$snapshot" ]; then
+	echo "$PROG: weder staged noch unstaged Aenderungen -- nichts zu tauschen"
+	exit 0
+fi
+
+head_tree=$(git rev-parse --verify "HEAD^{tree}")
+index_tree=$(git rev-parse --verify -q "$snapshot^2^{tree}") ||
+	die "der Snapshot enthaelt keinen Index-Commit"
+work_tree=$(git rev-parse --verify "$snapshot^{tree}")
+
+# --- Merge rechnen (mutiert nichts) -------------------------------------
+
+c_head=$(git commit-tree "$head_tree" -m git-swap)
+c_index=$(git commit-tree "$index_tree" -m git-swap)
+c_work=$(git commit-tree "$work_tree" -m git-swap)
+
+conflicted=0
+if merge_out=$(git merge-tree --write-tree --name-only \
+	--merge-base="$c_index" "$c_head" "$c_work"); then
+	:
+else
+	status=$?
+	[ "$status" -eq 1 ] || die "git merge-tree ist fehlgeschlagen (Status $status)"
+	conflicted=1
+fi
+
+new_tree=$(printf '%s\n' "$merge_out" | sed -n 1p)
+# Zeile 1 ist der Tree, danach bis zur ersten Leerzeile die Konfliktpfade.
+conflict_paths=$(printf '%s\n' "$merge_out" | sed -n '2,/^$/p' | sed '/^$/d')
+
+if [ "$conflicted" -eq 1 ] && [ "$partial" -eq 0 ]; then
+	{
+		echo "$PROG: der Tausch ist nicht eindeutig -- staged und unstaged"
+		echo "       Aenderungen fassen dieselben Stellen an:"
+		printf '%s\n' "$conflict_paths" | sed 's/^/         /'
+		echo
+		echo "       Es wurde nichts veraendert."
+		echo "       Mit --partial werden die uebrigen Pfade trotzdem getauscht."
+	} >&2
+	exit 1
+fi
+
+# --- --partial: Konfliktpfade auf ihren alten Index-Stand zuruecksetzen ---
+
+if [ "$conflicted" -eq 1 ]; then
+	tmp_index=$(mktemp "${TMPDIR:-/tmp}/git-swap-index.XXXXXX")
+	tmp_paths=$(mktemp "${TMPDIR:-/tmp}/git-swap-paths.XXXXXX")
+	trap 'rm -f "$tmp_index" "$tmp_paths"' EXIT HUP INT TERM
+
+	printf '%s\n' "$conflict_paths" >"$tmp_paths"
+	GIT_INDEX_FILE="$tmp_index" git read-tree "$new_tree"
+
+	while IFS= read -r path; do
+		[ -n "$path" ] || continue
+		entry=$(git ls-tree --full-tree "$index_tree" -- "$path")
+		[ -n "$entry" ] || die "$path laesst sich nicht teilweise tauschen \
+(Umbenennungs- oder Loeschkonflikt) -- es wurde nichts veraendert"
+		mode=$(printf '%s' "$entry" | cut -d' ' -f1)
+		oid=$(printf '%s' "$entry" | cut -d' ' -f3 | cut -f1)
+		GIT_INDEX_FILE="$tmp_index" git update-index --add \
+			--cacheinfo "$mode,$oid,$path"
+	done <"$tmp_paths"
+
+	new_tree=$(GIT_INDEX_FILE="$tmp_index" git write-tree)
+fi
+
+# --- Ausgabe ------------------------------------------------------------
+
+if [ "$dry_run" -eq 1 ]; then
+	echo "$PROG: Vorschau -- es wurde nichts veraendert"
+	echo
+	echo "waere danach staged (HEAD -> Index):"
+	git --no-pager diff-tree --stat "$head_tree" "$new_tree"
+	echo
+	echo "waere danach unstaged (Index -> Arbeitsbaum):"
+	git --no-pager diff-tree --stat "$new_tree" "$work_tree"
+	if [ "$conflicted" -eq 1 ]; then
+		echo
+		echo "unveraendert gelassen (Konflikt):"
+		printf '%s\n' "$conflict_paths" | sed 's/^/  /'
+	fi
+	exit 0
+fi
+
+# --- Die einzige Mutation ------------------------------------------------
+
+# Zwei Tausche in derselben Sekunde duerfen sich nicht gegenseitig den
+# Rettungsanker ueberschreiben, also den Namen notfalls durchzaehlen.
+backup_base="refs/git-swap/backup-$(date +%s)"
+backup_ref=$backup_base
+n=1
+while git rev-parse --verify -q "$backup_ref" >/dev/null; do
+	backup_ref="$backup_base-$n"
+	n=$((n + 1))
+done
+git update-ref "$backup_ref" "$snapshot" -m "$PROG: Stand vor dem Tausch"
+
+git read-tree "$new_tree"
+git update-index -q --refresh || true
+
+# Refnamen enthalten keine Leerzeichen; kein Pipeline-Subshell, damit ein
+# fehlgeschlagenes update-ref nicht verschluckt wird.
+stale=$(git for-each-ref --format='%(refname)' --sort=-refname refs/git-swap/ |
+	sed -n "$((KEEP_BACKUPS + 1)),\$p")
+for old_ref in $stale; do
+	git update-ref -d "$old_ref"
+done
+
+echo "$PROG: getauscht"
+echo
+echo "jetzt staged (HEAD -> Index):"
+git --no-pager diff --cached --stat
+echo
+echo "jetzt unstaged (Index -> Arbeitsbaum):"
+git --no-pager diff --stat
+if [ "$conflicted" -eq 1 ]; then
+	echo
+	echo "unveraendert gelassen (Konflikt):"
+	printf '%s\n' "$conflict_paths" | sed 's/^/  /'
+fi
+echo
+echo "rueckgaengig: git stash apply --index $snapshot"
