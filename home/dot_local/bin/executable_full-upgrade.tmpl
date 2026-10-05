@@ -27,8 +27,10 @@ if [[ "${CONTINUE_FROM_DOTFILES:-false}" == false ]]; then
 
     # Apply changes to chezmoi config
     c chezmoi init --force
-    # Apply the rest
-    c chezmoi apply --force
+    # Apply the rest. Without --force, chezmoi asks before overwriting a file
+    # that was changed by hand since it was last applied
+    c chezmoi diff
+    c chezmoi apply
   fi
 
   CONTINUE_FROM_DOTFILES=true exec "$0" "$@"
@@ -59,4 +61,30 @@ fi
 if pipx --version &>/dev/null; then
   log_task "Updating pipx packages"
   c pipx upgrade-all
+fi
+
+if rustup --version &>/dev/null; then
+  log_task "Updating rust toolchains"
+  c rustup update
+fi
+
+if cargo --version &>/dev/null; then
+  if ! cargo install-update --version &>/dev/null; then
+    log_task "Installing cargo-update"
+    c cargo install cargo-update
+  fi
+  log_task "Updating cargo packages"
+  # --git also updates packages installed from git repositories
+  c cargo install-update --all --git
+fi
+
+if pixi --version &>/dev/null; then
+  log_task "Updating pixi"
+  c pixi self-update
+fi
+
+if uv --version &>/dev/null; then
+  log_task "Updating uv and uv tools"
+  c uv self update
+  c uv tool upgrade --all
 fi

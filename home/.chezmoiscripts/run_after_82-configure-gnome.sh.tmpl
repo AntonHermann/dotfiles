@@ -25,9 +25,6 @@ function gsettings_ensure() {
   fi
 }
 
-# Setup VS Code as default text editor on GNOME
-xdg-mime default code.desktop text/plain
-
 # Configuring terminal font
 gsettings_ensure org.gnome.desktop.interface monospace-font-name 'FiraCode Nerd Font Mono 13'
 
