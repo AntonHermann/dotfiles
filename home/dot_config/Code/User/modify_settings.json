@@ -6,10 +6,59 @@
 {{-   $result = fromJsonc .chezmoi.stdin -}}
 {{- end -}}
 
-{{- /* Set terminal font */ -}}
-{{- $result = setValueAtPath (list "terminal.integrated.fontFamily") "FiraCode Nerd Font Mono" $result -}}
+{{- /*
+  Only general preferences are enforced here. Everything else (extension
+  settings, machine-specific paths, UI state) stays owned by VS Code, since
+  it writes to this file itself whenever a setting is changed in the UI.
+*/ -}}
 
-{{- /* Fix Linux title bars */ -}}
+{{- /* Fonts */ -}}
+{{- $result = setValueAtPath (list "editor.fontFamily") "'FiraCode Nerd Font', monospace" $result -}}
+{{- $result = setValueAtPath (list "editor.fontLigatures") true $result -}}
+{{- $result = setValueAtPath (list "terminal.integrated.fontFamily") "'FiraCode Nerd Font', monospace" $result -}}
+{{- $result = setValueAtPath (list "terminal.integrated.fontLigatures.enabled") true $result -}}
+
+{{- /* Editor */ -}}
+{{- $result = setValueAtPath (list "editor.minimap.enabled") false $result -}}
+{{- $result = setValueAtPath (list "breadcrumbs.enabled") false $result -}}
+{{- $result = setValueAtPath (list "editor.unicodeHighlight.allowedCharacters") (dict "α" true "γ" true) $result -}}
+{{- $result = setValueAtPath (list "files.autoGuessEncoding") true $result -}}
+
+{{- /* Window (custom title bar fixes Linux title bars) */ -}}
 {{- $result = setValueAtPath (list "window.titleBarStyle") "custom" $result -}}
+{{- $result = setValueAtPath (list "window.customTitleBarVisibility") "windowed" $result -}}
+{{- $result = setValueAtPath (list "window.autoDetectColorScheme") true $result -}}
+
+{{- /* Diff editor */ -}}
+{{- $result = setValueAtPath (list "diffEditor.renderSideBySide") false $result -}}
+{{- $result = setValueAtPath (list "diffEditor.ignoreTrimWhitespace") false $result -}}
+{{- $result = setValueAtPath (list "diffEditor.experimental.showMoves") true $result -}}
+{{- $result = setValueAtPath (list "diffEditor.maxComputationTime") 0 $result -}}
+{{- $result = setValueAtPath (list "[markdown]" "diffEditor.ignoreTrimWhitespace") true $result -}}
+{{- $result = setValueAtPath (list "[python]" "diffEditor.ignoreTrimWhitespace") false $result -}}
+
+{{- /* Git & explorer */ -}}
+{{- $result = setValueAtPath (list "git.autofetch") true $result -}}
+{{- $result = setValueAtPath (list "git.confirmSync") false $result -}}
+{{- $result = setValueAtPath (list "explorer.confirmDelete") false $result -}}
+{{- $result = setValueAtPath (list "explorer.fileNesting.patterns") (dict
+      "*.db" "${capture}.${extname}-*"
+      "*.db3" "${capture}.${extname}-*"
+      "*.js" "${capture}.js.map, ${capture}.min.js, ${capture}.d.ts"
+      "*.jsx" "${capture}.js"
+      "*.s3db" "${capture}.${extname}-*"
+      "*.sdb" "${capture}.${extname}-*"
+      "*.sqlite" "${capture}.${extname}-*"
+      "*.sqlite3" "${capture}.${extname}-*"
+      "*.ts" "${capture}.js"
+      "*.tsx" "${capture}.ts"
+      "Cargo.toml" "Cargo.lock"
+      "package.json" "package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb, bun.lock"
+      "tsconfig.json" "tsconfig.*.json"
+    ) $result -}}
+
+{{- /* Tools */ -}}
+{{- $result = setValueAtPath (list "bashIde.shellcheckArguments") "-x" $result -}}
+{{- $result = setValueAtPath (list "redhat.telemetry.enabled") false $result -}}
 
 {{- toPrettyJson "    " $result | trimSuffix "\n" -}}

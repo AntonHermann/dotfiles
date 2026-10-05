@@ -1,37 +1,39 @@
 [user]
-name = {{ .name }}
-email = {{ .email }}
+	name = {{ .name }}
+	email = {{ .email }}
 
 [core]
-editor = {{ .editor }}
+editor = hx
 
-[difftool "vscode"]
-cmd = code --wait --diff $LOCAL $REMOTE
+# [difftool "vscode"]
+# cmd = code --wait --diff $LOCAL $REMOTE
 
 [mergetool "vscode"]
 cmd = code --wait $MERGED
 
-[diff]
-tool = vscode
+# [diff]
+# 	tool = vscode
 
 [merge]
-autoStash = true
-tool = vscode
+	autoStash = true
+	tool = vscode
 
 [rebase]
-autoStash = true
+	autoStash = true
+	autosquash = true
+	updaterefs = true
 
 [push]
-autoSetupRemote = true
+	autoSetupRemote = true
 
 [init]
-defaultBranch = main
+	defaultBranch = main
 
 [gitreview]
-remote = origin
+	remote = origin
 
 [include]
-path = ~/.config/gitalias/gitalias.txt
+	path = ~/.config/gitalias/gitalias.txt
 
 [alias]
 # TODO: https://mystor.github.io/git-revise.html
@@ -99,3 +101,49 @@ cptob = "!f() { \
     git pfor "${branch}${push_opts}"; \
   done; \
 };f"
+	fpush = push --force-with-lease
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DELTA
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; configure delta as standard diff viewer
+[core]
+	pager = delta
+
+; highlight moved code parts differently
+[diff]
+    colorMoved = default
+
+; show 3-way-diff (ancestor - merge_commit1, ancestor - merge_commit2)
+[merge]
+    conflictstyle = diff3
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+	navigate = true                ; use n and N to move between diff sections
+	; side-by-side = true
+    features = line-numbers decorations hyperlinks
+    whitespace-error-style = 22 reverse
+	hyperlinks = true
+
+[delta "decorations"]
+    commit-decoration-style = bold yellow box ul
+    file-style = bold yellow ul
+    ; file-decoration-style = none
+    file-decoration-style = blue box ul
+    hunk-header-decoration-style = cyan box ul
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DIFFTASTIC
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[alias]
+    dlog = -c diff.external=difft log --ext-diff
+    dshow = -c diff.external=difft show --ext-diff
+    ddiff = -c diff.external=difft diff
+    dl = -c diff.external=difft log -p --ext-diff
