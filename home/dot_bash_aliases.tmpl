@@ -21,6 +21,16 @@ alias lsblk="/usr/bin/lsblk -e7 -o NAME,SIZE,FSTYPE,TYPE,MOUNTPOINT"
 
 alias print_uni='ssh andorra "lp -d t9-k42-zedat01 -"'
 
+# zellij: attach to a session (or create it); without argument, pick one of
+# the existing sessions interactively
+zj() {
+  if [ -n "${1:-}" ]; then
+    zellij attach --create "$1"
+  else
+    zellij_attach_or_create.sh
+  fi
+}
+
 # yazi (terminal file manager) wrapper that changes cwd on exit
 y() {
   local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd

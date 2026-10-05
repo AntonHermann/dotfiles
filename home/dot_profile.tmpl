@@ -9,9 +9,12 @@ elif [ -x "${HOME}/.linuxbrew/bin/brew" ]; then
   eval "$("${HOME}/.linuxbrew/bin/brew" shellenv)"
 fi
 
-# if [ -d "${HOME}/.volta/bin" ]; then
-  #echo "something went wrong with volta"
-# fi
+# The volta installer appends an unconditional copy of this to several
+# shell files; this is the only place it is needed.
+if [ -d "${HOME}/.volta/bin" ]; then
+  export VOLTA_HOME="${HOME}/.volta"
+  export PATH="${VOLTA_HOME}/bin:${PATH}"
+fi
 
 if [ -d "${HOME}/.deno/bin" ]; then
   export DENO_INSTALL="${HOME}/.deno"
@@ -32,6 +35,10 @@ fi
 
 if [ -d "${HOME}/.cargo/bin" ]; then
   export PATH="${HOME}/.cargo/bin:${PATH}"
+fi
+
+if [ -d "${HOME}/.pixi/bin" ]; then
+  export PATH="${HOME}/.pixi/bin:${PATH}"
 fi
 
 export OSFONTDIR="/usr/share/fonts//;${HOME}/.fonts//;$OSFONTDIR"
@@ -67,5 +74,3 @@ export EDITOR="# {{ .editor }}"
 # {{ if .is_wsl -}}
 export BROWSER="wslview"
 # {{- end }}
-export VOLTA_HOME="$HOME/.volta"
-export PATH="$VOLTA_HOME/bin:$PATH"

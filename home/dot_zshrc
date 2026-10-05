@@ -1,3 +1,7 @@
+# Keep PATH and fpath free of duplicates (e.g. when nesting shells, since
+# .profile below prepends to PATH every time)
+typeset -U path PATH fpath FPATH
+
 # Load .profile
 if [[ -r "${HOME}/.profile" ]]; then
   # Do not use emulate here, as pkgx errors with unsupported shell
@@ -22,14 +26,48 @@ if (( ${+commands[direnv]} )); then
 fi
 
 # Enable homebrew zsh completions
-if (( ${+commands[brew]} )); then
-  fpath+="$(brew --prefix)/share/zsh/site-functions"
+# (HOMEBREW_PREFIX is set by `brew shellenv` in .profile)
+if [[ -n "${HOMEBREW_PREFIX}" ]]; then
+  fpath+="${HOMEBREW_PREFIX}/share/zsh/site-functions"
 fi
 
-# custom completions
-if [ -d ~/bin/completions ]; then
-    fpath=(~/bin/completions $fpath)
-fi
+# Completions of tools that generate their own: cached as files in fpath, so
+# zsh only autoloads them on the first <Tab> instead of eval'ing them on every
+# start. A cached file is regenerated when the tool's binary is newer than it
+# (i.e. after an update, however the tool was updated).
+() {
+  local dir="${XDG_CACHE_HOME:-${HOME}/.cache}/zsh/completions"
+  # zellij appends helper functions (zr, ze, ...) after the completion; they
+  # are defined further below instead, so strip them here
+  local -A generators=(
+    pixi   'pixi completion --shell zsh'
+    uv     'uv generate-shell-completion zsh'
+    typst  'typst completions zsh'
+    zellij 'zellij setup --generate-completion zsh | sed "/^function zr /,\$d"'
+    volta  'volta completions zsh'
+    deno   'deno completions zsh'
+    stern  'stern --completion zsh'
+  )
+  local tool bin file
+
+  [[ -d "${dir}" ]] || mkdir -p "${dir}"
+  for tool in ${(k)generators}; do
+    bin="${commands[${tool}]}"
+    file="${dir}/_${tool}"
+    if [[ -z "${bin}" ]]; then
+      rm -f "${file}"
+    elif [[ ! -s "${file}" || "${bin}" -nt "${file}" ]]; then
+      # write to a temp file first, so concurrently starting shells never
+      # see a half-written completion
+      if eval "${generators[${tool}]}" >|"${file}.tmp" 2>/dev/null; then
+        mv -f "${file}.tmp" "${file}"
+      else
+        rm -f "${file}.tmp"
+      fi
+    fi
+  done
+  fpath=("${dir}" ${fpath})
+}
 
 # Oh-My-Zsh configuration
 
@@ -151,6 +189,16 @@ if [[ -r "${HOME}/.bash_aliases" ]]; then
   emulate ksh -c "source '${HOME}/.bash_aliases'"
 fi
 
+# zellij helpers (taken from `zellij setup --generate-completion zsh`):
+#   zr <cmd>   run <cmd> in a new pane    (zrf: floating, zri: in place)
+#   ze <file>  open <file> in $EDITOR     (zef: floating, zei: in place)
+function zr () { zellij run --name "$*" -- zsh -ic "$*";}
+function zrf () { zellij run --name "$*" --floating -- zsh -ic "$*";}
+function zri () { zellij run --name "$*" --in-place -- zsh -ic "$*";}
+function ze () { zellij edit "$*";}
+function zef () { zellij edit --floating "$*";}
+function zei () { zellij edit --in-place "$*";}
+
 # https://github.com/microsoft/vscode/issues/153400#issue-1286534600
 if [[ "${TERM_PROGRAM}" == "vscode" ]]; then
   ITERM_SHELL_INTEGRATION_INSTALLED="Yes"
@@ -159,20 +207,16 @@ if [[ "${TERM_PROGRAM}" == "vscode" ]]; then
   POWERLEVEL9K_TERM_SHELL_INTEGRATION="true"
 fi
 
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/anton/repos/miniconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/home/anton/repos/miniconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/anton/repos/miniconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/home/anton/repos/miniconda3/bin:$PATH"
-    fi
+# conda is initialized lazily on first use: its shell hook costs 350-750 ms,
+# which would otherwise be paid by every new shell.
+# Don't run `conda init zsh`, it would add the eager block again.
+if [[ -x "${HOME}/repos/miniconda3/bin/conda" ]]; then
+  conda() {
+    unfunction conda
+    eval "$("${HOME}/repos/miniconda3/bin/conda" shell.zsh hook)"
+    conda "$@"
+  }
 fi
-unset __conda_setup
-# <<< conda initialize <<<
 
 # # # ROS2 and Autominy environment setup
 # source /opt/ros/jazzy/setup.zsh
@@ -180,40 +224,14 @@ unset __conda_setup
 # source /home/anton/autominy/rviz_2d_overlay_plugins/install/setup.zsh
 # source /home/anton/Documents/Robotik/advanced_robotik_25_26/install/setup.zsh
 
-# uv and uvx completions
-eval "$(uv generate-shell-completion zsh)"
-# eval "$(uvx --generate-shell-completion zsh)"
-
 # zoxide
 eval "$(zoxide init zsh)"
 
-# typst
-eval "$(typst completions zsh)"
-
-# # Run zellij
-# if [[ -z "$ZELLIJ" ]]; then
-#   # zellij attach -c
-#   # RUST_BACKTRACE=1 zellij --debug --layout welcome
-#   zellij --layout welcome
-#   echo "zellij returned $?"
-# # else
-# #   echo "Already in zellij"
-# fi
-
-# eval "$(zellij setup --generate-completion zsh)"
-if [[ -z "$ZELLIJ" && -o interactive && "$TERM_PROGRAM" != "vscode" && "$TERM_PROGRAM" != "WarpTerminal" && "$TERM_PROGRAM" != "zed" ]]; then
-    zellij_attach_or_create.sh
-fi
-
 source <(sk --shell zsh)
 
-# navi: interactive cheatsheets. the widget is activated by ^g
+# navi: interactive cheatsheets. the widget is activated by ^N
 eval "$(navi widget zsh)"
 bindkey "^N" _navi_widget
-
-export PATH="/home/anton/.pixi/bin:$PATH"
-# autoload -Uz compinit && compinit  # redundant with Oh My Zsh
-eval "$(pixi completion --shell zsh)"
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
