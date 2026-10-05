@@ -110,6 +110,8 @@ data:
   name: "{{ $name }}"
   email: "{{ $email }}"
 
-  editor: "code --wait"
+  # terminal editor (EDITOR, git core.editor) and GUI editor (VISUAL)
+  editor: "hx"
+  visual: "code --wait"
 
   uname_arch: "{{ output "uname" "-m" | trim }}"

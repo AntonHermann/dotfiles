@@ -61,9 +61,8 @@ if [ -d "${HOME}/software/odin" ]; then
   export ODIN_ROOT="${HOME}/software/odin"
 fi
 
-export VISUAL="# {{ .editor }}"
-# export EDITOR="code --wait"
-export EDITOR="hx"
+export VISUAL="# {{ .visual }}"
+export EDITOR="# {{ .editor }}"
 
 # {{ if .is_wsl -}}
 export BROWSER="wslview"
