@@ -82,6 +82,12 @@
   url: "https://github.com/junegunn/fzf/releases/download/v{{ $fzfVersion }}/fzf-{{ $fzfVersion }}-linux_{{ .chezmoi.arch }}.tar.gz"
   path: fzf
 
+".local/bin/eza":
+    type : archive-file
+    url : {{ gitHubLatestReleaseAssetURL "eza-community/eza" "eza_x86_64-unknown-linux-gnu.tar.gz" | quote }}
+    executable : true
+    path : ./eza
+
 {{   if .is_gnome -}}
 ".local/share/nautilus-python/extensions/code-nautilus.py":
   type: file
@@ -104,7 +110,8 @@
 
 "{{ joinPath .fontsDir .terminalFont.fileName }}":
   type: file
-  {{ $nerdFontsVersion := includeTemplate "get-github-latest-version" (list "ryanoasis/nerd-fonts" $cache) }}
+  {{/* pinned: v3.5.1 no longer has the patched fonts in the git tree (404), v3.4.0 still does */}}
+  {{ $nerdFontsVersion := "3.4.0" }}
   url: "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v{{ $nerdFontsVersion }}/patched-fonts/FiraCode/Regular/FiraCodeNerdFontMono-Regular.ttf"
 
 {{    if .is_wsl -}}

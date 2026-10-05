@@ -31,3 +31,7 @@
 # https://github.com/twpayne/chezmoi/issues/1421#issuecomment-964473844
 .oh-my-zsh/cache/*
 **/*.zwc
+
+# SSH-Config wird nicht von chezmoi verwaltet (öffentliches Repo)
+.ssh
+.ssh/**

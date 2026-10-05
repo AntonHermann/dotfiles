@@ -9,27 +9,26 @@ if (( ${+commands[direnv]} )); then
   emulate zsh -c "$(direnv export zsh)"
 fi
 
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-${HOME}/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-${HOME}/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
+# # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# # Initialization code that may require console input (password prompts, [y/n]
+# # confirmations, etc.) must go above this block; everything else may go below.
+# if [[ -r "${XDG_CACHE_HOME:-${HOME}/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+#   source "${XDG_CACHE_HOME:-${HOME}/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+# fi
 
 # https://github.com/romkatv/powerlevel10k#how-do-i-initialize-direnv-when-using-instant-prompt
 if (( ${+commands[direnv]} )); then
   emulate zsh -c "$(direnv hook zsh)"
 fi
 
-# Load bash aliases
-if [[ -r "${HOME}/.bash_aliases" ]]; then
-  # ksh is closer than sh to bash
-  emulate ksh -c "source '${HOME}/.bash_aliases'"
-fi
-
 # Enable homebrew zsh completions
 if (( ${+commands[brew]} )); then
   fpath+="$(brew --prefix)/share/zsh/site-functions"
+fi
+
+# custom completions
+if [ -d ~/bin/completions ]; then
+    fpath=(~/bin/completions $fpath)
 fi
 
 # Oh-My-Zsh configuration
@@ -104,27 +103,53 @@ HIST_STAMPS="dd.mm.yyyy"
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
-  git
-  web-search
-  clipboard
+  # git
+  # web-search
+  # clipboard
   # docker
   # docker-compose
   # kubectl
   # helm
   # npm
-  command-not-found
-  common-aliases
-  ubuntu
-  sudo
+  # command-not-found
+  # common-aliases
+  colored-man-pages
+  # ubuntu
+  # sudo
   zsh-syntax-highlighting
   zsh-autosuggestions
   my-completions
-  )
+)
 
 # https://github.com/zsh-users/zsh-completions/issues/603
 fpath+="${ZSH_CUSTOM:-"${ZSH}/custom"}/plugins/zsh-completions/src"
 
 source "${ZSH}/oh-my-zsh.sh"
+
+################## Key bindings & zsh commands ##################
+
+# Ctrl+J -> delete first word of current cmdline or hist, put the cursor at the beginning
+function _change_command {
+  zle beginning-of-line-hist
+  zle delete-word
+}
+zle -N _change_command
+bindkey "^J" _change_command
+
+# Esc+h -> run-help with assistant functions for git, ip and sudo
+autoload -Uz run-help run-help-git run-help-ip run-help-sudo
+(( ${+aliases[run-help]} )) && unalias run-help
+
+# Fancier `mv`:
+# e.g.: zmv '(*)hell(*)' '${1}heaven${2}'
+autoload zmv
+
+
+# Load bash aliases
+if [[ -r "${HOME}/.bash_aliases" ]]; then
+  # ksh is closer than sh to bash
+  emulate ksh -c "source '${HOME}/.bash_aliases'"
+fi
 
 # https://github.com/microsoft/vscode/issues/153400#issue-1286534600
 if [[ "${TERM_PROGRAM}" == "vscode" ]]; then
@@ -149,18 +174,48 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 
-# ROS2 and Autominy environment setup
-source /opt/ros/jazzy/setup.zsh
-source /home/anton/autominy/catkin_ws/install/setup.zsh
+# # # ROS2 and Autominy environment setup
+# source /opt/ros/jazzy/setup.zsh
+# source /home/anton/autominy/catkin_ws/install/setup.zsh
+# source /home/anton/autominy/rviz_2d_overlay_plugins/install/setup.zsh
+# source /home/anton/Documents/Robotik/advanced_robotik_25_26/install/setup.zsh
 
 # uv and uvx completions
 eval "$(uv generate-shell-completion zsh)"
-eval "$(uvx --generate-shell-completion zsh)"
+# eval "$(uvx --generate-shell-completion zsh)"
 
 # zoxide
 eval "$(zoxide init zsh)"
 
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-if [[ -f "${HOME}/.p10k.zsh" ]]; then
-  source "${HOME}/.p10k.zsh"
+# typst
+eval "$(typst completions zsh)"
+
+# # Run zellij
+# if [[ -z "$ZELLIJ" ]]; then
+#   # zellij attach -c
+#   # RUST_BACKTRACE=1 zellij --debug --layout welcome
+#   zellij --layout welcome
+#   echo "zellij returned $?"
+# # else
+# #   echo "Already in zellij"
+# fi
+
+# eval "$(zellij setup --generate-completion zsh)"
+if [[ -z "$ZELLIJ" && -o interactive && "$TERM_PROGRAM" != "vscode" && "$TERM_PROGRAM" != "WarpTerminal" && "$TERM_PROGRAM" != "zed" ]]; then
+    zellij_attach_or_create.sh
 fi
+
+source <(sk --shell zsh)
+
+# navi: interactive cheatsheets. the widget is activated by ^g
+eval "$(navi widget zsh)"
+bindkey "^N" _navi_widget
+
+export PATH="/home/anton/.pixi/bin:$PATH"
+# autoload -Uz compinit && compinit  # redundant with Oh My Zsh
+eval "$(pixi completion --shell zsh)"
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# export ROS_DOMAIN_ID=25

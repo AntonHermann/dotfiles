@@ -146,9 +146,9 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 
-# ROS2 and Autominy environment setup
-source /opt/ros/jazzy/setup.bash
-source /home/anton/autominy/catkin_ws/install/setup.bash
+# # ROS2 and Autominy environment setup
+# source /opt/ros/jazzy/setup.bash
+# source /home/anton/autominy/catkin_ws/install/setup.bash
 
 # uv and uvx completions
 eval "$(uv generate-shell-completion bash)"
@@ -162,3 +162,5 @@ complete -C __xan -o default xan
 
 # zoxide
 eval "$(zoxide init bash)"
+export VOLTA_HOME="$HOME/.volta"
+export PATH="$VOLTA_HOME/bin:$PATH"

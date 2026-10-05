@@ -9,10 +9,9 @@ elif [ -x "${HOME}/.linuxbrew/bin/brew" ]; then
   eval "$("${HOME}/.linuxbrew/bin/brew" shellenv)"
 fi
 
-if [ -d "${HOME}/.volta/bin" ]; then
-  export VOLTA_HOME="${HOME}/.volta"
-  export PATH="${VOLTA_HOME}/bin:${PATH}"
-fi
+# if [ -d "${HOME}/.volta/bin" ]; then
+  #echo "something went wrong with volta"
+# fi
 
 if [ -d "${HOME}/.deno/bin" ]; then
   export DENO_INSTALL="${HOME}/.deno"
@@ -35,9 +34,39 @@ if [ -d "${HOME}/.cargo/bin" ]; then
   export PATH="${HOME}/.cargo/bin:${PATH}"
 fi
 
+export OSFONTDIR="/usr/share/fonts//;${HOME}/.fonts//;$OSFONTDIR"
+
+if [ -d "${HOME}/software/context" ]; then
+  CONTEXT_HOME="${HOME}/software/context"
+  if [ -d "${CONTEXT_HOME}/tex/texmf-linux-64/bin" ]; then
+    export PATH="${CONTEXT_HOME}/tex/texmf-linux-64/bin:$PATH"
+  fi
+  if [ -d "${CONTEXT_HOME}/tex/texmf-cache" ]; then
+    export TEXMFCACHE="${CONTEXT_HOME}/tex/texmf-cache"
+  fi
+fi
+
+if [ -d "${HOME}/software/krokiet" ]; then
+  export PATH="${HOME}/software/krokiet/bin:${PATH}"
+fi
+
+if [ -d "${HOME}/software/zig" ]; then
+  export PATH="${HOME}/software/zig:${PATH}"
+fi
+
+# the odin binary expects base/, core/ and vendor/ as siblings, so the
+# directory itself goes on PATH rather than a symlink to the binary
+if [ -d "${HOME}/software/odin" ]; then
+  export PATH="${HOME}/software/odin:${PATH}"
+  export ODIN_ROOT="${HOME}/software/odin"
+fi
+
 export VISUAL="# {{ .editor }}"
-export EDITOR="# {{ .editor }}"
+# export EDITOR="code --wait"
+export EDITOR="hx"
 
 # {{ if .is_wsl -}}
 export BROWSER="wslview"
 # {{- end }}
+export VOLTA_HOME="$HOME/.volta"
+export PATH="$VOLTA_HOME/bin:$PATH"
